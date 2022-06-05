@@ -7,21 +7,60 @@
     <div class="form-group">
         <InputFile OnChange="OnInputFileChange" multiple />
         <button class="btn btn-sm btn-success" type="button" @onclick="UploadFiles">Upload</button>
+        <br />
+        <br />
+        @{
+            var progressCss = "progress " + (displayProgress ? "" : "d-none");
+            var progressWithStyle = progressPercent + "%";
+        }
+        <div class="@progressCss">
+            <div class="progress-bar" role="progressbar"
+                 style="width:@progressWithStyle" aria-valuenow="@progressPercent"
+                 aria-valuemin="0" aria-valuemax="100">
+            </div>
+        </div>
     </div>
     <br />
     <label>@lableText</label>
     <br />
 </div>
+<br />
+
+@*@if (previewImages.Count > 0)*@
+@*{*@
+    <h3>Selected Files</h3>
+    <div class="card card-img">
+        <div class="row align-items-start">
+            @foreach (var item in previewImages)
+            {
+                <div class="col-2">
+                    <img class="rounded float-left m-1" src="@item" with="100" height="100" />
+                </div>
+            }
+        </div>
+    </div>
+@*}*@
 
 
 @code {
+    private bool displayProgress;
+    private int progressPercent;
+
     IReadOnlyList<IBrowserFile> selectedFiles;
+    private IList<string> previewImages = new List<string>();
 
     private string lableText = string.Empty;
-    public void OnInputFileChange(InputFileChangeEventArgs e)
+
+    public async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
         selectedFiles = new List<IBrowserFile>();
         selectedFiles = e.GetMultipleFiles();
+        
+        foreach (var file in selectedFiles)
+        {
+            var imageUrl = await fileUpload.GeneratePreviewUrl(file);
+            previewImages.Add(imageUrl);
+        }
     }
 
     public async Task UploadFiles()
@@ -30,11 +69,18 @@
         {
             if (selectedFiles is not null && selectedFiles.Count > 0)
             {
+                var uploaded = 0;
+                displayProgress = true;
+
                 foreach (var file in selectedFiles)
                 {
                     await fileUpload.UploadFile(file);
+                    uploaded++;
+                    progressPercent = (int)((uploaded / selectedFiles.Count) * 100);
                 }
-                lableText = $"Upload of {selectedFiles.Count} file(s) successful."; 
+                //displayProgress = false;
+                //progressPercent = 0;
+                lableText = $"Upload of {selectedFiles.Count} file(s) successful.";
             }
         }
         catch (Exception ex)
